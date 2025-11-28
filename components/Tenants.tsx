@@ -32,35 +32,26 @@ export const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants }) => {
     setTenants(tenants.filter(t => t.id !== id));
   };
 
-  // Helper to clean phone numbers to 5xxxxxxxxx format
   const cleanPhoneNumber = (phone: string): string => {
     if (!phone) return "";
-    // Remove all non-numeric characters
     let cleaned = phone.replace(/\D/g, '');
-    // If starts with 90, remove 90 (90535 -> 535)
     if (cleaned.startsWith('90') && cleaned.length > 10) {
       cleaned = cleaned.substring(2);
     }
-    // If starts with 0, remove 0 (0535 -> 535)
     if (cleaned.startsWith('0')) {
       cleaned = cleaned.substring(1);
     }
     return cleaned;
   };
 
-  // Robust CSV Parser with Auto-Detect Delimiter (Comma or Semicolon)
   const parseCSV = (text: string) => {
     const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
     if (lines.length === 0) return [];
 
-    // Detect delimiter from first line (Header)
-    // Count commas and semicolons to decide which one is the separator
     const firstLine = lines[0];
     const commaCount = (firstLine.match(/,/g) || []).length;
     const semicolonCount = (firstLine.match(/;/g) || []).length;
     const delimiter = semicolonCount > commaCount ? ';' : ',';
-
-    console.log(`CSV Detected Delimiter: '${delimiter}'`);
 
     const rows: string[][] = [];
     let currentRow: string[] = [];
@@ -93,7 +84,6 @@ export const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants }) => {
         currentCell += char;
       }
     }
-    // Push the last cell/row if exists
     if (currentCell || currentRow.length > 0) {
       currentRow.push(currentCell.trim());
       rows.push(currentRow);
@@ -103,65 +93,39 @@ export const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants }) => {
 
   const parseTurkishAmount = (val: string): number => {
     if (!val) return 0;
-    // Remove currency symbols and spaces
     let clean = val.replace(/[₺TL\s]/g, '');
-    
-    // Check format: 1.500,50 (TR) vs 1,500.50 (US)
-    // If it contains only commas, it's likely decimal separator in TR (150,50)
-    // If it contains dots and commas, dot is thousand, comma is decimal in TR (1.500,50)
-    
     if (clean.includes('.') && clean.includes(',')) {
-      // 1.500,50 -> Remove dots, replace comma with dot -> 1500.50
       clean = clean.replace(/\./g, '').replace(',', '.');
     } else if (clean.includes(',')) {
-      // 1500,50 -> 1500.50
       clean = clean.replace(',', '.');
     } else if (clean.includes('.')) {
-      // 1.500 -> If it looks like thousand separator (3 digits after dot), remove it.
-      // 1.5 -> If it looks like small decimal, keep it? 
-      // Aidat context: usually integer or simple decimal. 
-      // Safe bet for TR locale inputs: Remove dots (thousand sep).
-      // Example: 1.250 -> 1250
       clean = clean.replace(/\./g, '');
     }
-    
     return parseFloat(clean) || 0;
   };
 
   const handleFetchFromGoogleSheets = async () => {
     setIsLoadingCsv(true);
     setImportError(null);
-    // Use cache busting to ensure fresh data
     const CSV_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSmu-8jLW2UnIRa9U7XiKTVOg3kHMMgnVb0x-oBeff9fseIstsdbIk2soelo2Q1ZMc28aAj1ZM4nNTu/pub?output=csv&t=${Date.now()}`;
 
     try {
-      console.log("Fetching CSV from:", CSV_URL);
       const response = await fetch(CSV_URL);
       if (!response.ok) throw new Error(`Google Sheets'e erişilemedi. Status: ${response.status}`);
       
       const csvText = await response.text();
-      console.log("Raw CSV Preview (first 100 chars):", csvText.substring(0, 100));
-      
       const rows = parseCSV(csvText);
-      console.log("Parsed Rows Count:", rows.length);
-
-      // Validate Header or Data
-      // Expected Headers (Order might match, but let's rely on index): 
-      // A:DAIRE, B:ISIM-1, C:ISIM-2, D:AIDAT, E:NUMARA
       
       if (rows.length < 2) {
         throw new Error("CSV dosyası boş veya anlaşılamadı. (Satır sayısı yetersiz)");
       }
       
-      const newTenants: Tenant[] = rows.slice(1) // Skip header
+      const newTenants: Tenant[] = rows.slice(1)
         .filter(row => {
-            // Filter out empty rows or rows that don't have at least a Unit and Name
             if (!row || row.length < 2) return false;
-            // Check if DAIRE (0) or NAME (1) is empty
             return row[0].trim() !== '' && row[1].trim() !== '';
         })
         .map((row, index) => {
-          // Safe access to columns with fallbacks
           const unit = row[0] ? row[0].trim() : `Daire ${index}`;
           const name1 = row[1] ? row[1].trim() : 'İsimsiz';
           const name2 = row[2] ? row[2].trim() : undefined;
@@ -177,8 +141,6 @@ export const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants }) => {
             phoneNumber: cleanPhoneNumber(rawPhone)
           };
         });
-
-      console.log("Mapped Tenants:", newTenants);
 
       if (newTenants.length > 0) {
         if(confirm(`Google Sheets'ten ${newTenants.length} kişi bulundu. Mevcut liste silinip bunlar eklensin mi?`)) {
@@ -199,16 +161,17 @@ export const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants }) => {
 
   return (
     <div className="space-y-6">
+      <h2 className="text-xl font-bold text-gray-800 md:hidden mb-4">Daire Sakinleri</h2>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <h3 className="text-xl font-bold text-gray-800">Daire Sakinleri Listesi</h3>
+           <h3 className="text-lg md:text-xl font-bold text-gray-800">Liste Yönetimi</h3>
            <p className="text-sm text-gray-500">Listeyi manuel düzenleyebilir veya Excel'den çekebilirsiniz.</p>
         </div>
         
         <button 
           onClick={handleFetchFromGoogleSheets}
           disabled={isLoadingCsv}
-          className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+          className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-3 md:py-2 rounded-lg transition-colors shadow-sm disabled:opacity-50 w-full md:w-auto"
         >
           {isLoadingCsv ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
           <span>Google Sheets'ten Çek</span>
@@ -223,7 +186,7 @@ export const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants }) => {
       )}
 
       {/* Add Form */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100">
         <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Manuel Kişi Ekle</h4>
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
           <div>
@@ -278,7 +241,7 @@ export const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants }) => {
           </div>
           <button
             onClick={handleAdd}
-            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors w-full md:w-auto"
           >
             <Plus className="w-5 h-5" />
             <span>Ekle</span>
@@ -286,10 +249,10 @@ export const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants }) => {
         </div>
       </div>
 
-      {/* List */}
+      {/* List - Mobile Responsive Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[600px]"> {/* min-w forces scroll on small screens */}
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Daire</th>

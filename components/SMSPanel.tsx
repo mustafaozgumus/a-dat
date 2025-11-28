@@ -11,7 +11,7 @@ interface SMSPanelProps {
 export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
-  const [title, setTitle] = useState("SEMSSITEYON"); // Default updated
+  const [title, setTitle] = useState("SEMSSITEYON");
   const [isSending, setIsSending] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
   const [result, setResult] = useState<{success: boolean, message: string} | null>(null);
@@ -83,11 +83,12 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center space-x-3 mb-6">
-        <div className="bg-blue-100 p-3 rounded-full">
+      <div className="flex items-center space-x-3 mb-4 md:mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-800 md:hidden">SMS Paneli</h2>
+        <div className="hidden md:block bg-blue-100 p-3 rounded-full">
           <MessageSquare className="w-6 h-6 text-blue-600" />
         </div>
-        <div>
+        <div className="hidden md:block">
           <h2 className="text-2xl font-bold text-gray-800">SMS ve Duyuru Paneli</h2>
           <p className="text-sm text-gray-500">Site sakinlerine toplu veya özel mesaj gönderin.</p>
         </div>
@@ -95,7 +96,7 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left: Recipient List */}
-        <div className="md:col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[600px]">
+        <div className="md:col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[300px] md:h-[600px]">
           <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
             <h3 className="font-semibold text-gray-700 flex items-center">
               <Users className="w-4 h-4 mr-2" />
@@ -118,9 +119,9 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
                 }`}
               >
                 {selectedIds.has(tenant.id) ? (
-                  <CheckSquare className="w-5 h-5 text-blue-600 mr-3" />
+                  <CheckSquare className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" />
                 ) : (
-                  <Square className="w-5 h-5 text-gray-300 mr-3" />
+                  <Square className="w-5 h-5 text-gray-300 mr-3 flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{tenant.name1}</p>
@@ -139,7 +140,7 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
 
         {/* Right: Message Editor */}
         <div className="md:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100">
              <h3 className="font-semibold text-gray-800 mb-4">Mesaj Oluştur</h3>
              
              <div className="space-y-4">
@@ -155,9 +156,9 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
                 </div>
 
                 <div>
-                   <div className="flex justify-between items-center mb-1">
+                   <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-1 gap-2">
                       <label className="block text-sm font-medium text-gray-700">Mesaj İçeriği</label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className="flex gap-1 mr-2">
                           <button onClick={() => insertVariable('{isim}')} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded hover:bg-blue-100 border border-blue-100">+ İsim</button>
                           <button onClick={() => insertVariable('{daire}')} className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded hover:bg-green-100 border border-green-100">+ Daire</button>
@@ -166,7 +167,7 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
                         <button 
                           onClick={handleAiImprove}
                           disabled={isImproving || !message}
-                          className="flex items-center text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                          className="flex items-center justify-center text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm w-full sm:w-auto mt-2 sm:mt-0"
                         >
                           {isImproving ? <Loader2 className="w-3 h-3 animate-spin mr-1"/> : <Wand2 className="w-3 h-3 mr-1"/>}
                           AI ile Düzelt
@@ -199,7 +200,7 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
                     <div className={`p-4 rounded-lg flex flex-col items-center ${result.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
                        {result.success ? <CheckCircle className="w-8 h-8 mb-2"/> : <XCircle className="w-8 h-8 mb-2"/>}
                        <p className="font-medium text-lg">{result.success ? 'Gönderim Başarılı' : 'Gönderim Hatası'}</p>
-                       <p className="text-sm mb-3">{result.message}</p>
+                       <p className="text-sm mb-3 break-words text-center">{result.message}</p>
                        <button 
                          onClick={() => setResult(null)}
                          className="text-sm underline hover:no-underline"

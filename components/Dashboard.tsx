@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tenant, AnalysisResponse } from '../types';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Wallet, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface DashboardProps {
@@ -49,19 +49,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ tenants, lastAnalysis }) =
 
   return (
     <div className="space-y-6">
+      <h2 className="text-xl font-bold text-gray-800 md:hidden mb-4">Genel Bakış</h2>
+      
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div key={index} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 font-medium mb-1">{stat.title}</p>
-                  <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-800">{stat.value}</h3>
                 </div>
                 <div className={`p-3 rounded-full ${stat.color}`}>
-                  <Icon className="w-6 h-6" />
+                  <Icon className="w-5 h-5 md:w-6 md:h-6" />
                 </div>
               </div>
             </div>
@@ -72,7 +74,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tenants, lastAnalysis }) =
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Payment Distribution */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-gray-800 mb-4">Bu Ay Tahsilat Durumu</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -98,9 +100,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ tenants, lastAnalysis }) =
         </div>
 
         {/* Quick Actions / Info */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-start">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-start">
           <h3 className="text-lg font-bold text-gray-800 mb-4">Hızlı İpuçları</h3>
-          <ul className="space-y-4 text-gray-600">
+          <ul className="space-y-4 text-gray-600 text-sm md:text-base">
             <li className="flex items-start">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">1</span>
               <span>Daire sakinleri listesini güncel tutun.</span>
