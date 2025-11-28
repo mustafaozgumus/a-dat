@@ -4,12 +4,20 @@ import { Dashboard } from './components/Dashboard';
 import { Tenants } from './components/Tenants';
 import { Analysis } from './components/Analysis';
 import { SMSPanel } from './components/SMSPanel';
+import { Login } from './components/Login';
+import { useAuth } from './contexts/AuthContext';
 import { Tenant, ViewState, AnalysisResponse } from './types';
 
-function App() {
+// İç component: Auth logic'ten ayrılmış ana uygulama
+const AppContent = () => {
+  const { isAuthenticated } = useAuth();
   const [currentView, setView] = useState<ViewState>('dashboard');
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [lastAnalysis, setLastAnalysis] = useState<AnalysisResponse | null>(null);
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
 
   const renderView = () => {
     switch (currentView) {
@@ -31,6 +39,7 @@ function App() {
       {renderView()}
     </Layout>
   );
-}
+};
 
-export default App;
+// Ana App Component artık context provider'ın içinde kullanılacak (index.tsx tarafından sarmalanacak)
+export default AppContent;

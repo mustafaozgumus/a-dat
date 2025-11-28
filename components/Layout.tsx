@@ -1,6 +1,7 @@
 import React from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, Users, FileSearch, Building2, MessageSquare } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { LayoutDashboard, Users, FileSearch, Building2, MessageSquare, LogOut } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,6 +10,8 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentView, setView }) => {
+  const { logout, user } = useAuth();
+
   const navItems = [
     { id: 'dashboard', label: 'Genel Bakış', icon: LayoutDashboard },
     { id: 'tenants', label: 'Daire Sakinleri', icon: Users },
@@ -51,11 +54,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setView }
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
-          <div className="bg-slate-800 rounded-lg p-3 text-xs text-slate-400">
-            <p className="font-semibold text-slate-300 mb-1">Gemini AI Destekli</p>
-            <p>Banka ekstrenizi yükleyin, yapay zeka ödemeleri eşleştirsin.</p>
+        <div className="p-4 border-t border-slate-800 space-y-4">
+          <div className="flex items-center justify-between px-2">
+             <span className="text-sm text-slate-400">Kullanıcı: <span className="text-white font-medium">{user}</span></span>
           </div>
+          <button 
+            onClick={logout}
+            className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-red-600/90 text-slate-300 hover:text-white px-4 py-2 rounded-lg transition-colors text-sm"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Güvenli Çıkış</span>
+          </button>
         </div>
       </div>
 
@@ -66,7 +75,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setView }
             {navItems.find(n => n.id === currentView)?.label}
           </h2>
           <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
             <span className="text-sm text-gray-500">Sistem Aktif</span>
           </div>
         </header>
