@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Tenant } from '../types';
 import { sendBulkSms } from '../services/smsService';
-import { MessageSquare, CheckSquare, Square, Users, Send, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { improveTextWithGemini } from '../services/geminiService';
+import { MessageSquare, CheckSquare, Square, Users, Send, Loader2, CheckCircle, XCircle, Wand2 } from 'lucide-react';
 
 interface SMSPanelProps {
   tenants: Tenant[];
@@ -12,6 +13,7 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
   const [message, setMessage] = useState("");
   const [title, setTitle] = useState("SEMSSITEYON"); // Default updated
   const [isSending, setIsSending] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
   const [result, setResult] = useState<{success: boolean, message: string} | null>(null);
 
   const toggleSelectAll = () => {
@@ -34,6 +36,19 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
 
   const insertVariable = (variable: string) => {
     setMessage(prev => prev + ` ${variable} `);
+  };
+
+  const handleAiImprove = async () => {
+    if (!message.trim()) return;
+    setIsImproving(true);
+    try {
+      const improved = await improveTextWithGemini(message);
+      setMessage(improved);
+    } catch (error) {
+      alert("Metin iyileştirilirken bir hata oluştu.");
+    } finally {
+      setIsImproving(false);
+    }
   };
 
   const handleSend = async () => {
@@ -142,17 +157,27 @@ export const SMSPanel: React.FC<SMSPanelProps> = ({ tenants }) => {
                 <div>
                    <div className="flex justify-between items-center mb-1">
                       <label className="block text-sm font-medium text-gray-700">Mesaj İçeriği</label>
-                      <div className="flex gap-2">
-                        <button onClick={() => insertVariable('{isim}')} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">+ İsim</button>
-                        <button onClick={() => insertVariable('{daire}')} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">+ Daire</button>
-                        <button onClick={() => insertVariable('{aidat}')} className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200">+ Aidat</button>
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1 mr-2">
+                          <button onClick={() => insertVariable('{isim}')} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded hover:bg-blue-100 border border-blue-100">+ İsim</button>
+                          <button onClick={() => insertVariable('{daire}')} className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded hover:bg-green-100 border border-green-100">+ Daire</button>
+                          <button onClick={() => insertVariable('{aidat}')} className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded hover:bg-purple-100 border border-purple-100">+ Aidat</button>
+                        </div>
+                        <button 
+                          onClick={handleAiImprove}
+                          disabled={isImproving || !message}
+                          className="flex items-center text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                        >
+                          {isImproving ? <Loader2 className="w-3 h-3 animate-spin mr-1"/> : <Wand2 className="w-3 h-3 mr-1"/>}
+                          AI ile Düzelt
+                        </button>
                       </div>
                    </div>
                    <textarea
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       rows={8}
-                      placeholder="Mesajınızı buraya yazın..."
+                      placeholder="Duyurunuzu buraya yazın..."
                       className="w-full px-4 py-3 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                    />
                    <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100">

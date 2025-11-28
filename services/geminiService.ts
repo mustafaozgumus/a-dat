@@ -103,3 +103,34 @@ export const analyzeStatementWithGemini = async (
     throw error;
   }
 };
+
+export const improveTextWithGemini = async (text: string): Promise<string> => {
+  if (!text || text.trim().length === 0) return text;
+
+  const prompt = `
+    Sen profesyonel, kibar ve çözüm odaklı bir apartman/site yöneticisisin. 
+    Aşağıdaki SMS metnini al ve şu kurallara göre yeniden yaz:
+    
+    1. Üslubu daha kurumsal, nazik ve profesyonel hale getir.
+    2. Türkçe dil bilgisi ve imla hatalarını düzelt.
+    3. Metnin içindeki süslü parantezli değişkenleri (Örn: {isim}, {daire}, {aidat}, {tutar}, {donem} vb.) ASLA değiştirme, silme veya bozma. Bunlar aynen kalmalı.
+    4. Mesajın ana fikrini koru.
+    5. Mümkün olduğunca kısa ve öz tut (SMS olduğu için).
+    6. Sadece düzeltilmiş metni döndür, başına sonuna açıklama ekleme.
+
+    MEVCUT METİN:
+    "${text}"
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt
+    });
+    
+    return response.text?.trim() || text;
+  } catch (error) {
+    console.error("Gemini Text Improvement Error:", error);
+    throw error; // UI should handle this
+  }
+};

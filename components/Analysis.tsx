@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Tenant, AnalysisResponse, PaymentStatus } from '../types';
-import { analyzeStatementWithGemini } from '../services/geminiService';
+import { analyzeStatementWithGemini, improveTextWithGemini } from '../services/geminiService';
 import { sendBulkSms } from '../services/smsService';
-import { UploadCloud, CheckCircle, XCircle, AlertTriangle, Loader2, FileText, CalendarRange, MessageSquare, Send, Edit3 } from 'lucide-react';
+import { UploadCloud, CheckCircle, XCircle, AlertTriangle, Loader2, FileText, CalendarRange, MessageSquare, Send, Wand2 } from 'lucide-react';
 
 interface AnalysisProps {
   tenants: Tenant[];
@@ -32,6 +32,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
   // SMS State
   const [showSmsModal, setShowSmsModal] = useState(false);
   const [isSendingSms, setIsSendingSms] = useState(false);
+  const [isImprovingSms, setIsImprovingSms] = useState(false);
   const [smsResult, setSmsResult] = useState<{success: boolean, message: string} | null>(null);
   const [smsTitle, setSmsTitle] = useState("SEMSSITEYON"); // Default updated
   const [smsTemplate, setSmsTemplate] = useState("");
@@ -117,6 +118,19 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
 
   const insertVariable = (variable: string) => {
     setSmsTemplate(prev => prev + ` ${variable} `);
+  };
+
+  const handleAiImprove = async () => {
+    if (!smsTemplate.trim()) return;
+    setIsImprovingSms(true);
+    try {
+      const improved = await improveTextWithGemini(smsTemplate);
+      setSmsTemplate(improved);
+    } catch (error) {
+      alert("Metin iyileştirilirken bir hata oluştu.");
+    } finally {
+      setIsImprovingSms(false);
+    }
   };
 
   const handleSendSms = async () => {
@@ -403,7 +417,17 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
                 </div>
 
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Mesaj Şablonu</label>
+                   <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium text-gray-700">Mesaj Şablonu</label>
+                      <button 
+                        onClick={handleAiImprove}
+                        disabled={isImprovingSms || !smsTemplate}
+                        className="flex items-center text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                      >
+                        {isImprovingSms ? <Loader2 className="w-3 h-3 animate-spin mr-1"/> : <Wand2 className="w-3 h-3 mr-1"/>}
+                        AI ile Düzelt
+                      </button>
+                   </div>
                    <div className="flex flex-wrap gap-2 mb-2">
                      <button onClick={() => insertVariable('{isim}')} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">+ İsim</button>
                      <button onClick={() => insertVariable('{donem}')} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">+ Dönem</button>
