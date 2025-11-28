@@ -5,17 +5,26 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeStatementWithGemini = async (
   base64Image: string,
-  tenants: Tenant[]
+  tenants: Tenant[],
+  periodName: string,
+  monthCount: number
 ): Promise<AnalysisResponse> => {
   
   // Format the tenant list to include both names for the AI context
+  // Calculate total expected based on selected month count
   const tenantContext = tenants.map(t => {
     const names = t.name2 ? `${t.name1} veya ${t.name2}` : t.name1;
-    return `ID: ${t.id}, Unit: ${t.unit}, Names: [${names}], Expected: ${t.expectedAmount}`;
+    const totalExpected = t.expectedAmount * monthCount;
+    return `ID: ${t.id}, Unit: ${t.unit}, Names: [${names}], Monthly: ${t.expectedAmount}, TOTAL_EXPECTED_FOR_PERIOD: ${totalExpected}`;
   }).join('\n');
 
   const prompt = `
     Sen uzman bir site yöneticisi asistanısın. Görevin, yüklenen banka ekstresi görüntüsünü analiz etmek ve listedeki kiracılarla ödemeleri eşleştirmektir.
+
+    SEÇİLEN DÖNEM: ${periodName}
+    KAPSANAN AY SAYISI: ${monthCount}
+    
+    (Not: Listede belirtilen 'TOTAL_EXPECTED_FOR_PERIOD' değeri, aylık aidatın ${monthCount} ile çarpılmış halidir. Kontrolü buna göre yap.)
 
     İŞTE KİRACI LİSTESİ (DAİRE VE İSİMLER):
     ${tenantContext}
@@ -26,7 +35,7 @@ export const analyzeStatementWithGemini = async (
     1. Görüntüdeki tüm para girişi işlemlerini oku (Tarih, İsim, Tutar, Açıklama).
     2. Her işlemi yukarıdaki Kiracı Listesi ile eşleştirmeye çalış. İsim benzerliklerini (fuzzy match) dikkate al.
     3. Eğer bir kiracı listede varsa ancak ekstrenin içinde ödemesi bulunamıyorsa, onu da sonuçlara ekle ve durumunu 'UNPAID' olarak işaretle.
-    4. Ödeme varsa ancak tutar beklenen tutardan azsa 'PARTIAL', tam veya fazlaysa 'PAID' olarak işaretle.
+    4. Ödeme varsa ancak tutar 'TOTAL_EXPECTED_FOR_PERIOD' değerinden azsa 'PARTIAL', tam veya fazlaysa 'PAID' olarak işaretle.
     5. Listede olmayan bir isimden ödeme geldiyse, tenantId: null olarak işaretle.
 
     JSON ŞEMASINA UYGUN ÇIKTI VER.
