@@ -4,6 +4,7 @@ export interface Tenant {
   name2?: string;
   unit: string;
   expectedAmount: number;
+  phoneNumber?: string; // E.g., 5351234567
 }
 
 export enum PaymentStatus {
@@ -32,4 +33,4 @@ export interface AnalysisResponse {
   };
 }
 
-export type ViewState = 'dashboard' | 'tenants' | 'analysis';
+export type ViewState = 'dashboard' | 'tenants' | 'analysis' | 'sms';

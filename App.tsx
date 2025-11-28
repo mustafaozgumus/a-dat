@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { Tenants } from './components/Tenants';
 import { Analysis } from './components/Analysis';
+import { SMSPanel } from './components/SMSPanel';
 import { Tenant, ViewState, AnalysisResponse } from './types';
 
 function App() {
@@ -18,6 +19,8 @@ function App() {
         return <Tenants tenants={tenants} setTenants={setTenants} />;
       case 'analysis':
         return <Analysis tenants={tenants} onAnalysisComplete={setLastAnalysis} />;
+      case 'sms':
+        return <SMSPanel tenants={tenants} />;
       default:
         return <Dashboard tenants={tenants} lastAnalysis={lastAnalysis} />;
     }

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tenant, AnalysisResponse, PaymentStatus } from '../types';
 import { analyzeStatementWithGemini } from '../services/geminiService';
-import { UploadCloud, CheckCircle, XCircle, AlertTriangle, Loader2, FileText, CalendarRange, Calendar } from 'lucide-react';
+import { sendBulkSms } from '../services/smsService';
+import { UploadCloud, CheckCircle, XCircle, AlertTriangle, Loader2, FileText, CalendarRange, MessageSquare, Send, Edit3 } from 'lucide-react';
 
 interface AnalysisProps {
   tenants: Tenant[];
@@ -28,6 +29,29 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
   const [startMonth, setStartMonth] = useState(new Date().getMonth());
   const [endMonth, setEndMonth] = useState(new Date().getMonth() + 1);
 
+  // SMS State
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [isSendingSms, setIsSendingSms] = useState(false);
+  const [smsResult, setSmsResult] = useState<{success: boolean, message: string} | null>(null);
+  const [smsTitle, setSmsTitle] = useState("SEMSSITEYON"); // Default updated
+  const [smsTemplate, setSmsTemplate] = useState("");
+
+  useEffect(() => {
+    // Set default template when component mounts or date changes
+    const periodName = getPeriodName();
+    setSmsTemplate(`Sayın {isim}, ${periodName} dönemi aidat ödemeniz eksik görülmektedir. Lütfen kontrol ediniz.`);
+  }, [mode, selectedMonth, selectedYear, startMonth, endMonth]);
+
+  const getPeriodName = () => {
+    if (mode === 'single') {
+      return `${MONTHS[selectedMonth]} ${selectedYear}`;
+    } else {
+      const start = Math.min(startMonth, endMonth);
+      const end = Math.max(startMonth, endMonth);
+      return `${MONTHS[start]}-${MONTHS[end]} ${selectedYear}`;
+    }
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -53,23 +77,17 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
     setResult(null);
 
     // Calculate Period Info
-    let periodName = "";
+    let periodName = getPeriodName();
     let monthCount = 1;
 
-    if (mode === 'single') {
-      periodName = `${MONTHS[selectedMonth]} ${selectedYear}`;
-      monthCount = 1;
-    } else {
-      // Ensure start is before end
+    if (mode === 'range') {
       const start = Math.min(startMonth, endMonth);
       const end = Math.max(startMonth, endMonth);
-      periodName = `${MONTHS[start]} - ${MONTHS[end]} ${selectedYear}`;
       monthCount = (end - start) + 1;
     }
 
     try {
       const base64Data = filePreview.split(',')[1];
-      // Pass period info to service
       const data = await analyzeStatementWithGemini(base64Data, tenants, periodName, monthCount);
       setResult(data);
       onAnalysisComplete(data);
@@ -78,6 +96,56 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const getUnpaidTenantsWithPhone = () => {
+    if (!result) return [];
+    
+    // Find tenants who are marked as UNPAID in the results
+    const unpaidResults = result.results.filter(r => r.status === PaymentStatus.UNPAID && r.tenantId);
+    
+    // Map to tenant details including phone
+    return unpaidResults.map(r => {
+      const t = tenants.find(tenant => tenant.id === r.tenantId);
+      return {
+        ...r,
+        phone: t?.phoneNumber,
+        name: t?.name1
+      };
+    }).filter(item => item.phone && item.phone.length > 5); // Ensure phone exists
+  };
+
+  const insertVariable = (variable: string) => {
+    setSmsTemplate(prev => prev + ` ${variable} `);
+  };
+
+  const handleSendSms = async () => {
+    setIsSendingSms(true);
+    const recipients = getUnpaidTenantsWithPhone();
+    
+    if (recipients.length === 0) {
+      setSmsResult({ success: false, message: "Telefon numarası kayıtlı borçlu bulunamadı." });
+      setIsSendingSms(false);
+      return;
+    }
+
+    const periodName = getPeriodName();
+
+    // Prepare list with replaced variables
+    const smsList = recipients.map(r => {
+      let message = smsTemplate;
+      message = message.replace(/{isim}/g, r.name || 'Site Sakini');
+      message = message.replace(/{donem}/g, periodName);
+      message = message.replace(/{tutar}/g, r.detectedAmount ? `${r.detectedAmount}` : 'Belirtilmemiş');
+      return {
+        phone: r.phone!,
+        message: message.trim()
+      };
+    });
+
+    const response = await sendBulkSms(smsList, smsTitle);
+    setSmsResult(response);
+    setIsSendingSms(false);
   };
 
   const getStatusBadge = (status: PaymentStatus) => {
@@ -105,6 +173,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
     );
   };
 
+  const unpaidCountWithPhone = getUnpaidTenantsWithPhone().length;
+
   return (
     <div className="space-y-6">
       
@@ -116,7 +186,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
         </h3>
         
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Mode Toggle */}
           <div className="flex bg-gray-100 p-1 rounded-lg self-start">
             <button
               onClick={() => setMode('single')}
@@ -132,7 +201,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
             </button>
           </div>
 
-          {/* Selectors */}
           <div className="flex flex-wrap gap-3 items-center">
             {mode === 'single' ? (
               <>
@@ -177,13 +245,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
                 </select>
               </div>
             )}
-            
-            <div className="ml-auto text-sm text-gray-500 bg-blue-50 px-3 py-1 rounded border border-blue-100 hidden md:block">
-              {mode === 'single' 
-                ? `${MONTHS[selectedMonth]} ${selectedYear} aidatları kontrol edilecek.`
-                : `${Math.abs(endMonth - startMonth) + 1} aylık toplam aidat kontrol edilecek.`
-              }
-            </div>
           </div>
         </div>
       </div>
@@ -250,12 +311,17 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-gray-800">Analiz Sonuçları</h3>
-            <div className="flex space-x-4 text-sm">
-              <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
-                <span className="text-gray-500 mr-2">Toplam Tahsilat:</span>
-                <span className="font-bold text-green-600">{result.summary.totalCollected} ₺</span>
-              </div>
-              <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
+            <div className="flex space-x-2">
+              {unpaidCountWithPhone > 0 && (
+                 <button 
+                   onClick={() => setShowSmsModal(true)}
+                   className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                 >
+                   <MessageSquare className="w-4 h-4" />
+                   <span>Borçlulara SMS ({unpaidCountWithPhone})</span>
+                 </button>
+              )}
+              <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 text-sm">
                 <span className="text-gray-500 mr-2">Eşleşen:</span>
                 <span className="font-bold text-blue-600">{result.summary.matchCount} Kişi</span>
               </div>
@@ -300,6 +366,94 @@ export const Analysis: React.FC<AnalysisProps> = ({ tenants, onAnalysisComplete 
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMS Modal */}
+      {showSmsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                <MessageSquare className="w-5 h-5 mr-2 text-red-500" />
+                Borç Bildirim SMS'i
+              </h3>
+              <button onClick={() => {setShowSmsModal(false); setSmsResult(null);}} className="text-gray-400 hover:text-gray-600">
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {!smsResult ? (
+              <div className="space-y-4">
+                <div className="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800 flex items-start">
+                   <AlertTriangle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0"/>
+                   <span><strong>{unpaidCountWithPhone}</strong> kişiye ödeme hatırlatması gönderilecek.</span>
+                </div>
+                
+                <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Başlık</label>
+                   <input 
+                      type="text" 
+                      value={smsTitle} 
+                      onChange={(e) => setSmsTitle(e.target.value)}
+                      maxLength={11}
+                      className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                   />
+                </div>
+
+                <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Mesaj Şablonu</label>
+                   <div className="flex flex-wrap gap-2 mb-2">
+                     <button onClick={() => insertVariable('{isim}')} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">+ İsim</button>
+                     <button onClick={() => insertVariable('{donem}')} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">+ Dönem</button>
+                     <button onClick={() => insertVariable('{tutar}')} className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200">+ Tutar</button>
+                   </div>
+                   <textarea
+                      value={smsTemplate}
+                      onChange={(e) => setSmsTemplate(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none"
+                   />
+                   <p className="text-xs text-gray-400 mt-1">Önizleme: {smsTemplate.replace('{isim}', 'Ahmet Y.').replace('{donem}', getPeriodName()).replace('{tutar}', '1500')}</p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    onClick={() => setShowSmsModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    İptal
+                  </button>
+                  <button 
+                    onClick={handleSendSms}
+                    disabled={isSendingSms}
+                    className="flex-1 flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    {isSendingSms ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                    Gönder
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                {smsResult.success ? (
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                ) : (
+                  <XCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+                )}
+                <p className={`font-medium mb-2 ${smsResult.success ? 'text-green-700' : 'text-red-700'}`}>
+                  {smsResult.success ? 'Başarılı!' : 'Hata!'}
+                </p>
+                <p className="text-sm text-gray-600 mb-4">{smsResult.message}</p>
+                <button 
+                  onClick={() => setShowSmsModal(false)}
+                  className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg"
+                >
+                  Kapat
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

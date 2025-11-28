@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, Users, FileSearch, Building2 } from 'lucide-react';
+import { LayoutDashboard, Users, FileSearch, Building2, MessageSquare } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,6 +13,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, setView }
     { id: 'dashboard', label: 'Genel Bakış', icon: LayoutDashboard },
     { id: 'tenants', label: 'Daire Sakinleri', icon: Users },
     { id: 'analysis', label: 'Ekstre Analizi', icon: FileSearch },
+    { id: 'sms', label: 'SMS / Duyuru', icon: MessageSquare },
   ];
 
   return (
